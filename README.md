@@ -1,6 +1,6 @@
 # Zegóis Music
 
-A minimal Rust + WebAssembly music MVP: Rust renders a sine-wave melody using equal temperament, the browser plays it with the Web Audio API, and Rust/WASM draws the generated waveform on a canvas.
+A minimal Rust + WebAssembly music MVP: Rust builds the UI, renders a sine-wave melody using equal temperament, plays it through the browser Web Audio API, and draws the generated waveform on a canvas.
 
 ## Requirements
 
@@ -35,8 +35,10 @@ http://localhost:8080/web/
 
 ## How it works
 
-- `src/lib.rs` exposes `Synth` and `WaveformVisualizer` through `wasm-bindgen`.
+- `src/lib.rs` exposes `start_app`, `Synth`, and `WaveformVisualizer` through `wasm-bindgen`.
+- `start_app` renders the controls into `#app`, binds events, and manages playback state.
 - Frequencies are calculated with `440 * 2^(n / 12)`, where `n` is semitones from A4.
 - The synth renders mono `f32` PCM samples.
-- `web/main.js` copies those samples into a Web Audio `AudioBuffer`.
-- Rust/WASM draws the same samples on the `web/index.html` canvas.
+- Rust/WASM copies those samples into a Web Audio `AudioBuffer` and starts playback.
+- Rust/WASM draws the same samples on the generated canvas.
+- `web/main.js` is now only a tiny WASM loader.

@@ -32,14 +32,18 @@ impl Synth {
     }
 
     /// Render a short looping-ish melody as mono f32 PCM samples in [-1.0, 1.0].
-    ///
-    /// JavaScript can place the returned Float32Array into an AudioBuffer.
     pub fn render_melody(&self, sample_rate: u32) -> Vec<f32> {
         render_melody(sample_rate, self.bpm)
     }
 
     pub fn frequency_for_semitone(&self, semitone_from_a4: i32) -> f32 {
         frequency_for_semitone(semitone_from_a4)
+    }
+}
+
+impl Default for Synth {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -88,7 +92,341 @@ pub fn frequency_for_semitone(semitone_from_a4: i32) -> f32 {
 }
 
 #[cfg(target_arch = "wasm32")]
+pub use app::start_app;
+#[cfg(target_arch = "wasm32")]
 pub use visualizer::WaveformVisualizer;
+
+#[cfg(target_arch = "wasm32")]
+mod app {
+    use std::{cell::RefCell, rc::Rc};
+
+    use wasm_bindgen::{JsCast, JsValue, closure::Closure, prelude::*};
+    use web_sys::{
+        AudioBufferSourceNode, AudioContext, AudioScheduledSourceNode, Document, Element,
+        HtmlButtonElement, HtmlInputElement, Window, window,
+    };
+
+    use super::{DEFAULT_BPM, Synth, visualizer::WaveformVisualizer};
+
+    const APP_HTML: &str = r#"
+<main>
+  <section class="hero">
+    <p class="eyebrow">Rust + WebAssembly + Web Audio</p>
+    <h1>Music</h1>
+    <p>
+      A tiny synthesized melody rendered from sine waves in Rust, played in
+      the browser, visualized on canvas, and now controlled by a Rust-built UI.
+    </p>
+  </section>
+
+  <section class="panel">
+    <div class="controls">
+      <button id="play">Play melody</button>
+      <button id="stop" disabled>Stop!</button>
+      <label>
+        BPM
+        <input id="bpm" type="range" min="60" max="180" value="108" />
+        <span id="bpmValue">108</span>
+      </label>
+    </div>
+
+    <canvas id="visualizer" width="960" height="320" aria-label="Waveform visualizer"></canvas>
+    <p id="status" class="status">Ready. Press Play melody to synthesize sound from Rust.</p>
+  </section>
+
+  <section class="notes">
+    <h2>What is happening?</h2>
+    <ul>
+      <li>Rust creates this UI and binds the controls.</li>
+      <li>Rust computes note frequencies with <code>440 * 2^(n / 12)</code>.</li>
+      <li>Rust renders mono <code>f32</code> PCM samples for a small melody.</li>
+      <li>Rust sends those samples to a Web Audio <code>AudioBuffer</code>.</li>
+      <li>Rust draws the same samples as a waveform on the canvas.</li>
+    </ul>
+  </section>
+</main>
+"#;
+
+    #[wasm_bindgen]
+    pub fn start_app() -> Result<(), JsValue> {
+        let window = window().ok_or_else(|| JsValue::from_str("window is not available"))?;
+        let document = window
+            .document()
+            .ok_or_else(|| JsValue::from_str("document is not available"))?;
+
+        let root = document
+            .get_element_by_id("app")
+            .ok_or_else(|| JsValue::from_str("#app root element was not found"))?;
+        root.set_inner_html(APP_HTML);
+
+        let state = Rc::new(RefCell::new(AppState::new(&document)?));
+        state.borrow().visualizer.draw_idle()?;
+
+        let animation = create_animation_loop(&window, Rc::clone(&state));
+        bind_bpm_input(Rc::clone(&state))?;
+        bind_play_button(&window, Rc::clone(&state), Rc::clone(&animation))?;
+        bind_stop_button(&window, Rc::clone(&state))?;
+
+        Ok(())
+    }
+
+    struct AppState {
+        synth: Synth,
+        visualizer: WaveformVisualizer,
+        audio_context: Option<AudioContext>,
+        source: Option<AudioBufferSourceNode>,
+        samples: Vec<f32>,
+        started_at: f64,
+        animation_frame: Option<i32>,
+        play_button: HtmlButtonElement,
+        stop_button: HtmlButtonElement,
+        bpm_input: HtmlInputElement,
+        bpm_value: Element,
+        status: Element,
+    }
+
+    impl AppState {
+        fn new(document: &Document) -> Result<Self, JsValue> {
+            Ok(Self {
+                synth: Synth::new(),
+                visualizer: WaveformVisualizer::new("visualizer")?,
+                audio_context: None,
+                source: None,
+                samples: Vec::new(),
+                started_at: 0.0,
+                animation_frame: None,
+                play_button: element_by_id(document, "play")?,
+                stop_button: element_by_id(document, "stop")?,
+                bpm_input: element_by_id(document, "bpm")?,
+                bpm_value: document
+                    .get_element_by_id("bpmValue")
+                    .ok_or_else(|| JsValue::from_str("#bpmValue element was not found"))?,
+                status: document
+                    .get_element_by_id("status")
+                    .ok_or_else(|| JsValue::from_str("#status element was not found"))?,
+            })
+        }
+
+        fn play(&mut self) -> Result<(), JsValue> {
+            self.stop_current_source();
+
+            let bpm = self.bpm_input.value().parse().unwrap_or(DEFAULT_BPM);
+            self.synth.set_bpm(bpm);
+
+            let context = self.audio_context()?;
+            let _ = context.resume()?;
+
+            let sample_rate = context.sample_rate();
+            self.samples = self.synth.render_melody(sample_rate.round() as u32);
+
+            let buffer = context.create_buffer(1, self.samples.len() as u32, sample_rate)?;
+            buffer.copy_to_channel(&self.samples, 0)?;
+
+            let source = context.create_buffer_source()?;
+            source.set_buffer(Some(&buffer));
+            source.connect_with_audio_node(&context.destination())?;
+
+            self.started_at = context.current_time();
+            source.start()?;
+            self.source = Some(source);
+            self.set_playing(true);
+            self.set_status("Playing a Rust-synthesized melody.");
+
+            Ok(())
+        }
+
+        fn draw_animation_frame(&mut self) -> Result<bool, JsValue> {
+            if self.source.is_none() || self.samples.is_empty() {
+                return Ok(false);
+            }
+
+            let context = self
+                .audio_context
+                .as_ref()
+                .ok_or_else(|| JsValue::from_str("audio context is not available"))?;
+            let duration = self.samples.len() as f64 / context.sample_rate() as f64;
+            let progress = ((context.current_time() - self.started_at) / duration).clamp(0.0, 1.0);
+
+            self.visualizer
+                .draw_waveform(&self.samples, progress as f32)?;
+
+            if progress >= 1.0 {
+                self.source = None;
+                self.set_playing(false);
+                self.set_status("Finished. Adjust BPM and play again.");
+                Ok(false)
+            } else {
+                Ok(true)
+            }
+        }
+
+        fn stop_current_source(&mut self) {
+            if let Some(source) = self.source.take() {
+                let scheduled_source: &AudioScheduledSourceNode = source.unchecked_ref();
+                let _ = scheduled_source.stop();
+            }
+            self.set_playing(false);
+        }
+
+        fn audio_context(&mut self) -> Result<AudioContext, JsValue> {
+            if self.audio_context.is_none() {
+                self.audio_context = Some(AudioContext::new()?);
+            }
+
+            Ok(self
+                .audio_context
+                .as_ref()
+                .expect("audio context exists")
+                .clone())
+        }
+
+        fn set_playing(&self, playing: bool) {
+            self.play_button.set_disabled(playing);
+            self.stop_button.set_disabled(!playing);
+        }
+
+        fn set_status(&self, message: &str) {
+            self.status.set_text_content(Some(message));
+        }
+    }
+
+    fn create_animation_loop(
+        window: &Window,
+        state: Rc<RefCell<AppState>>,
+    ) -> Rc<RefCell<Option<Closure<dyn FnMut()>>>> {
+        let animation: Rc<RefCell<Option<Closure<dyn FnMut()>>>> = Rc::new(RefCell::new(None));
+        let animation_for_frame = Rc::clone(&animation);
+        let window_for_frame = window.clone();
+
+        *animation.borrow_mut() = Some(Closure::wrap(Box::new(move || {
+            let keep_animating = {
+                let mut state = state.borrow_mut();
+                state.animation_frame = None;
+                state.draw_animation_frame().unwrap_or(false)
+            };
+
+            if keep_animating {
+                if let Some(callback) = animation_for_frame.borrow().as_ref() {
+                    if let Ok(frame_id) =
+                        window_for_frame.request_animation_frame(callback.as_ref().unchecked_ref())
+                    {
+                        state.borrow_mut().animation_frame = Some(frame_id);
+                    }
+                }
+            }
+        }) as Box<dyn FnMut()>));
+
+        animation
+    }
+
+    fn bind_bpm_input(state: Rc<RefCell<AppState>>) -> Result<(), JsValue> {
+        let input = state.borrow().bpm_input.clone();
+        let input_for_listener = input.clone();
+        let bpm_value = state.borrow().bpm_value.clone();
+        let state_for_input = Rc::clone(&state);
+
+        let on_input = Closure::wrap(Box::new(move || {
+            let bpm = input_for_listener.value();
+            bpm_value.set_text_content(Some(&bpm));
+
+            if let Ok(bpm) = bpm.parse::<f32>() {
+                state_for_input.borrow_mut().synth.set_bpm(bpm);
+            }
+        }) as Box<dyn FnMut()>);
+
+        input.add_event_listener_with_callback("input", on_input.as_ref().unchecked_ref())?;
+        on_input.forget();
+
+        Ok(())
+    }
+
+    fn bind_play_button(
+        window: &Window,
+        state: Rc<RefCell<AppState>>,
+        animation: Rc<RefCell<Option<Closure<dyn FnMut()>>>>,
+    ) -> Result<(), JsValue> {
+        let play_button = state.borrow().play_button.clone();
+        let window_for_play = window.clone();
+        let state_for_play = Rc::clone(&state);
+        let animation_for_play = Rc::clone(&animation);
+
+        let on_click = Closure::wrap(Box::new(move || {
+            cancel_scheduled_animation(&window_for_play, &state_for_play);
+
+            let play_result = state_for_play.borrow_mut().play();
+            match play_result {
+                Ok(()) => {
+                    request_next_frame(&window_for_play, &state_for_play, &animation_for_play)
+                }
+                Err(_) => {
+                    let mut state = state_for_play.borrow_mut();
+                    state.stop_current_source();
+                    state.set_status("Could not start audio. Try pressing Play again.");
+                }
+            }
+        }) as Box<dyn FnMut()>);
+
+        play_button.add_event_listener_with_callback("click", on_click.as_ref().unchecked_ref())?;
+        on_click.forget();
+
+        Ok(())
+    }
+
+    fn bind_stop_button(window: &Window, state: Rc<RefCell<AppState>>) -> Result<(), JsValue> {
+        let stop_button = state.borrow().stop_button.clone();
+        let window_for_stop = window.clone();
+        let state_for_stop = Rc::clone(&state);
+
+        let on_click = Closure::wrap(Box::new(move || {
+            cancel_scheduled_animation(&window_for_stop, &state_for_stop);
+
+            let mut state = state_for_stop.borrow_mut();
+            state.stop_current_source();
+            state.set_status("Stopped.");
+
+            if state.samples.is_empty() {
+                let _ = state.visualizer.draw_idle();
+            } else {
+                let _ = state.visualizer.draw_waveform(&state.samples, 0.0);
+            }
+        }) as Box<dyn FnMut()>);
+
+        stop_button.add_event_listener_with_callback("click", on_click.as_ref().unchecked_ref())?;
+        on_click.forget();
+
+        Ok(())
+    }
+
+    fn request_next_frame(
+        window: &Window,
+        state: &Rc<RefCell<AppState>>,
+        animation: &Rc<RefCell<Option<Closure<dyn FnMut()>>>>,
+    ) {
+        if let Some(callback) = animation.borrow().as_ref() {
+            if let Ok(frame_id) = window.request_animation_frame(callback.as_ref().unchecked_ref())
+            {
+                state.borrow_mut().animation_frame = Some(frame_id);
+            }
+        }
+    }
+
+    fn cancel_scheduled_animation(window: &Window, state: &Rc<RefCell<AppState>>) {
+        if let Some(frame_id) = state.borrow_mut().animation_frame.take() {
+            let _ = window.cancel_animation_frame(frame_id);
+        }
+    }
+
+    fn element_by_id<T>(document: &Document, id: &str) -> Result<T, JsValue>
+    where
+        T: JsCast,
+    {
+        document
+            .get_element_by_id(id)
+            .ok_or_else(|| JsValue::from_str(&format!("#{id} element was not found")))?
+            .dyn_into::<T>()
+            .map_err(|_| JsValue::from_str(&format!("#{id} element has the wrong type")))
+    }
+}
 
 #[cfg(target_arch = "wasm32")]
 mod visualizer {
@@ -96,9 +434,6 @@ mod visualizer {
     use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, window};
 
     /// Canvas renderer for the generated audio waveform.
-    ///
-    /// JavaScript still owns browser audio timing, but all canvas drawing now
-    /// happens in Rust/WASM.
     #[wasm_bindgen]
     pub struct WaveformVisualizer {
         canvas: HtmlCanvasElement,
@@ -138,7 +473,7 @@ mod visualizer {
             self.ctx.set_font("20px system-ui, sans-serif");
             self.ctx.set_text_align("center");
             self.ctx.fill_text(
-                "Rust is ready — press Play melody",
+                "Rust UI is ready — press Play melody",
                 width / 2.0,
                 height / 2.0,
             )?;

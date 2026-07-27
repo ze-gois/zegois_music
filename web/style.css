@@ -105,6 +105,11 @@ canvas {
   background: #10131f;
 }
 
+.status {
+  margin: 14px 4px 0;
+  color: #9aa4bf;
+}
+
 .notes {
   margin-top: 22px;
   padding: 18px 24px;

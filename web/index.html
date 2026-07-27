@@ -7,41 +7,7 @@
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <main>
-      <section class="hero">
-        <p class="eyebrow">Rust + WebAssembly + Web Audio</p>
-        <h1>Music</h1>
-        <p>
-          A tiny synthesized melody rendered from sine waves in Rust, played in
-          the browser, and visualized on canvas.
-        </p>
-      </section>
-
-      <section class="panel">
-        <div class="controls">
-          <button id="play">Play melody</button>
-          <button id="stop" disabled>Stop</button>
-          <label>
-            BPM
-            <input id="bpm" type="range" min="60" max="180" value="108" />
-            <span id="bpmValue">108</span>
-          </label>
-        </div>
-
-        <canvas id="visualizer" width="960" height="320" aria-label="Waveform visualizer"></canvas>
-      </section>
-
-      <section class="notes">
-        <h2>What is happening?</h2>
-        <ul>
-          <li>Rust computes note frequencies with <code>440 * 2^(n / 12)</code>.</li>
-          <li>Rust renders mono <code>f32</code> PCM samples for a small melody.</li>
-          <li>JavaScript copies those samples into a Web Audio <code>AudioBuffer</code>.</li>
-          <li>The same samples are drawn as a waveform on the canvas.</li>
-        </ul>
-      </section>
-    </main>
-
+    <div id="app"></div>
     <script type="module" src="./main.js"></script>
   </body>
 </html>
