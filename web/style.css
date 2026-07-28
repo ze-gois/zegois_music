@@ -97,6 +97,17 @@ input[type="range"] {
   accent-color: #77f7c5;
 }
 
+.visual-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.visual-stack h2 {
+  margin: 0 0 10px 4px;
+  color: #f5f7fb;
+  font-size: 1rem;
+}
+
 canvas {
   display: block;
   width: 100%;
