@@ -93,8 +93,25 @@ label {
   color: #c8d0e7;
 }
 
-input[type="range"] {
+input[type="range"],
+input[type="radio"] {
   accent-color: #77f7c5;
+}
+
+.edit-mode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+}
+
+.edit-mode legend {
+  padding: 0 8px;
+  color: #77f7c5;
+  font-weight: 800;
 }
 
 .visual-stack {
@@ -116,9 +133,20 @@ canvas {
   background: #10131f;
 }
 
+.melody-status,
 .status {
   margin: 14px 4px 0;
   color: #9aa4bf;
+}
+
+.melody-status {
+  margin-bottom: 18px;
+}
+
+#eulerGraph,
+#pianoKeyboard,
+#guitarNeck {
+  cursor: pointer;
 }
 
 .notes {

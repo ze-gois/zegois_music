@@ -1,6 +1,6 @@
 # Zegóis Music
 
-A minimal Rust + WebAssembly music MVP: Rust builds the UI, renders a sine-wave melody using equal temperament, plays it through the browser Web Audio API, draws the generated waveform, graphs the melody notes as pitch over time, and visualizes pitch-class relationships in an Euler/Tonnetz-inspired circular graph.
+A minimal Rust + WebAssembly music MVP: Rust builds the UI, lets you compose by clicking an Euler/Tonnetz-inspired pitch graph, edit individual melody instants with piano and guitar-neck canvases, renders sine-wave melodies using equal temperament, plays them through the browser Web Audio API, draws the generated waveform, and graphs the melody notes as pitch over time.
 
 ## Requirements
 
@@ -43,4 +43,18 @@ http://localhost:8080/web/
 - Rust/WASM draws the same samples on the generated waveform canvas.
 - Rust/WASM also draws a note graph showing pitch over time and the active note.
 - Rust/WASM draws an Euler/Tonnetz-inspired linked graph: pitch classes are placed around the circle of fifths, with fifth/third relationships drawn as edges.
+- Click pitch-class nodes to append notes to the melody.
+- Select a **Note step**, then choose an **Edit melody mode**:
+  - **Replace selected step** edits that exact instant.
+  - **Insert after selected step** inserts a new note after it.
+  - **Append to melody** adds a note to the end.
+- Click the piano keyboard, guitar neck, or Euler/Tonnetz graph to audition the note and apply the selected edit mode.
+- Use **Reset melody**, **Generate graph walk**, or **Clear melody** to change the composition.
 - `web/main.js` is now only a tiny WASM loader.
+
+## Code structure
+
+- `src/lib.rs` exposes the public WASM/native entry points and wires modules together.
+- `src/synth.rs` contains sample generation, BPM handling, equal-temperament frequency math, and synth tests.
+- `src/app/` owns the Rust-generated DOM, app state, event bindings, playback orchestration, edit modes, and graph-walk melody helpers.
+- `src/visualizer/` contains canvas drawing and hit-testing for the waveform, note graph, Euler/Tonnetz graph, piano keyboard, and guitar neck.
