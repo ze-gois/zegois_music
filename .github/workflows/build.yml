@@ -1,4 +1,4 @@
-name: Build WebAssembly
+name: Build and Deploy WebAssembly
 
 on:
   push:
@@ -9,8 +9,13 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: music-production
+  cancel-in-progress: true
+
 jobs:
   build:
+    name: Build website
     runs-on: ubuntu-latest
 
     steps:
@@ -34,14 +39,104 @@ jobs:
             --out-dir web/pkg \
             --release
 
-      - name: Inspect generated files
+      - name: Inspect generated website
         run: |
           find web -maxdepth 2 -type f -print
 
       - name: Upload website artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: zegois-music-web
           path: web/
           if-no-files-found: error
           retention-days: 7
+
+  deploy:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Download website artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: zegois-music-web
+          path: deploy/
+
+      - name: Inspect downloaded artifact
+        run: |
+          find deploy -maxdepth 2 -type f -print
+
+      - name: Configure SSH
+        shell: bash
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 "$HOME/.ssh"
+
+          printf '%s\n' "$DEPLOY_SSH_KEY" \
+            > "$HOME/.ssh/github-actions-music"
+
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" \
+            > "$HOME/.ssh/known_hosts"
+
+          chmod 600 "$HOME/.ssh/github-actions-music"
+          chmod 600 "$HOME/.ssh/known_hosts"
+
+      - name: Upload to VPS staging directory
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          rsync \
+            --archive \
+            --verbose \
+            --delete \
+            -e "ssh \
+              -i $HOME/.ssh/github-actions-music \
+              -o BatchMode=yes \
+              -o IdentitiesOnly=yes" \
+            deploy/ \
+            "$DEPLOY_USER@$DEPLOY_HOST:~/music-deploy-staging/"
+
+      - name: Promote staging directory to production
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          ssh \
+            -i "$HOME/.ssh/github-actions-music" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            '
+              set -eu
+
+              test -f "$HOME/music-deploy-staging/index.html"
+              test -f "$HOME/music-deploy-staging/pkg/zegois_music_bg.wasm"
+
+              rsync \
+                --archive \
+                --verbose \
+                --delete \
+                "$HOME/music-deploy-staging/" \
+                /srv/zegois/music/
+
+              rm -rf "$HOME/music-deploy-staging"
+            '
+
+      - name: Verify deployed website
+        run: |
+          curl \
+            --fail \
+            --show-error \
+            --silent \
+            --retry 5 \
+            --retry-delay 2 \
+            https://music.zegois.com/ \
+            > /dev/null
+
+          echo "Deployment verified successfully"
