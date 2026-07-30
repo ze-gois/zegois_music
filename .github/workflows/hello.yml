@@ -4,16 +4,18 @@ on:
   push:
     branches:
       - main
-      workflow_dispatch:
+  workflow_dispatch:
 
 jobs:
   hello:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
+
       - name: Say hello
         run: |
-            echo "Hello, World from github actions!"
-            uname -a
-            rustc --version || true
+          echo "Hello from GitHub Actions!"
+          uname -a
+          rustc --version || true
