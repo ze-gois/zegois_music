@@ -1,3 +1,10 @@
+//! Browser application entry point.
+//!
+//! This module owns startup: it injects the Rust-generated HTML, constructs
+//! [`AppState`], draws the initial visualizers, and binds all DOM/canvas events.
+//! The submodules keep the UI template, event closures, state transitions, and
+//! music helpers separate so the WASM app remains readable as it grows.
+
 mod dom;
 mod events;
 mod music;
@@ -12,6 +19,11 @@ use web_sys::window;
 use state::AppState;
 use ui::APP_HTML;
 
+/// Mount the Rust-owned music UI into `#app` and bind browser events.
+///
+/// This is the main function called by `web/main.js` after the WASM package is
+/// loaded. It returns a JavaScript error value when required DOM APIs or
+/// elements are unavailable.
 #[wasm_bindgen]
 pub fn start_app() -> Result<(), JsValue> {
     let window = window().ok_or_else(|| JsValue::from_str("window is not available"))?;

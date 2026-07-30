@@ -1,3 +1,10 @@
+//! Audio synthesis primitives.
+//!
+//! This module is intentionally small and deterministic: it turns semitone
+//! offsets from A4 into equal-temperament frequencies, then renders a melody as
+//! mono `f32` PCM samples. The WASM app copies those samples into a Web Audio
+//! `AudioBuffer`, while native tests use the same code path.
+
 use std::f32::consts::TAU;
 
 use wasm_bindgen::prelude::*;
@@ -8,7 +15,11 @@ const ATTACK_SECONDS: f32 = 0.01;
 const RELEASE_SECONDS: f32 = 0.08;
 const MASTER_GAIN: f32 = 0.22;
 
-// Semitone offsets from A4. This is a simple A minor / C major flavored phrase.
+/// Built-in 32-step phrase used when the browser UI starts or resets.
+///
+/// Each value is a semitone offset from A4. The phrase has an A minor / C major
+/// flavor and gives every visualizer enough motion to be interesting before the
+/// user edits it.
 pub(crate) const DEFAULT_MELODY: [i32; 32] = [
     0, 3, 7, 12, 10, 7, 3, 0, // A C E A G E C A
     -2, 2, 5, 10, 9, 5, 2, -2, // G B D G F# D B G
@@ -26,15 +37,18 @@ pub struct Synth {
 
 #[wasm_bindgen]
 impl Synth {
+    /// Create a synth with the default tempo.
     #[wasm_bindgen(constructor)]
     pub fn new() -> Synth {
         Synth { bpm: DEFAULT_BPM }
     }
 
+    /// Current tempo in beats per minute.
     pub fn bpm(&self) -> f32 {
         self.bpm
     }
 
+    /// Set the tempo, clamped to a musically useful browser-demo range.
     pub fn set_bpm(&mut self, bpm: f32) {
         self.bpm = bpm.clamp(30.0, 260.0);
     }
@@ -44,6 +58,7 @@ impl Synth {
         render_melody(sample_rate, self.bpm)
     }
 
+    /// Convert a semitone offset from A4 into hertz.
     pub fn frequency_for_semitone(&self, semitone_from_a4: i32) -> f32 {
         frequency_for_semitone(semitone_from_a4)
     }
@@ -55,11 +70,20 @@ impl Default for Synth {
     }
 }
 
+/// Render the built-in melody as mono `f32` PCM samples.
+///
+/// This free function is exported to JavaScript as a simple MVP API. The app
+/// state uses the same rendering path internally when the user edits the melody.
 #[wasm_bindgen]
 pub fn render_melody(sample_rate: u32, bpm: f32) -> Vec<f32> {
     render_notes(sample_rate, bpm, &DEFAULT_MELODY)
 }
 
+/// Render an arbitrary melody as mono `f32` PCM samples.
+///
+/// `melody` is a list of semitone offsets from A4. A small attack/release
+/// envelope avoids clicks, and a quiet first overtone/vibrato gives the sine
+/// wave a little life while keeping the MVP easy to understand.
 pub(crate) fn render_notes(sample_rate: u32, bpm: f32, melody: &[i32]) -> Vec<f32> {
     let sample_rate = sample_rate.max(8_000) as f32;
     let seconds_per_beat = 60.0 / bpm.clamp(30.0, 260.0);
@@ -90,11 +114,15 @@ pub(crate) fn render_notes(sample_rate: u32, bpm: f32, melody: &[i32]) -> Vec<f3
     samples
 }
 
+/// Convert semitones from A4 to equal-temperament frequency in hertz.
+///
+/// The formula is `440 * 2^(n / 12)`, where `n` is the semitone offset from A4.
 #[wasm_bindgen]
 pub fn frequency_for_semitone(semitone_from_a4: i32) -> f32 {
     440.0 * 2.0_f32.powf(semitone_from_a4 as f32 / 12.0)
 }
 
+/// Simple linear attack/release envelope for a single note.
 fn envelope(sample_index: usize, total_samples: usize, sample_rate: f32) -> f32 {
     let attack_samples = (ATTACK_SECONDS * sample_rate) as usize;
     let release_samples = (RELEASE_SECONDS * sample_rate) as usize;

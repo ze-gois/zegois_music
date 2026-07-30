@@ -1,20 +1,28 @@
+//! Pitch-over-time note graph.
+//!
+//! This visualizer maps each melody instant to a point on a time/pitch graph,
+//! connects the points, and overlays a playhead plus active-note labels.
+
 use wasm_bindgen::JsValue;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
 use super::{active_note_index, canvas_context, note_name, note_range};
 
+/// Draws the melody as pitch over time.
 pub struct NoteGraphVisualizer {
     canvas: HtmlCanvasElement,
     ctx: CanvasRenderingContext2d,
 }
 
 impl NoteGraphVisualizer {
+    /// Create a note graph bound to the canvas with `canvas_id`.
     pub fn new(canvas_id: &str) -> Result<NoteGraphVisualizer, JsValue> {
         let (canvas, ctx) = canvas_context(canvas_id, "note graph canvas")?;
 
         Ok(NoteGraphVisualizer { canvas, ctx })
     }
 
+    /// Draw the melody and active playback position.
     pub fn draw(&self, melody: &[i32], progress: f32) -> Result<(), JsValue> {
         let width = self.width();
         let height = self.height();

@@ -1,3 +1,10 @@
+//! Canvas visualizers and hit-testing for the music UI.
+//!
+//! Each visualizer owns one `<canvas>` and its 2D context. Drawing code lives in
+//! Rust so playback state, melody edits, and visual feedback share the same data
+//! model. Instrument visualizers also expose hit-testing methods that convert
+//! click positions into semitone offsets.
+
 mod common;
 mod euler;
 mod instruments;

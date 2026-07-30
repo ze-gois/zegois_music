@@ -52,6 +52,25 @@ http://localhost:8080/web/
 - Use **Reset melody**, **Generate graph walk**, or **Clear melody** to change the composition.
 - `web/main.js` is now only a tiny WASM loader.
 
+## Documentation
+
+Generate local Rust API documentation:
+
+```sh
+cargo doc --no-deps --document-private-items
+```
+
+For the browser/WASM-only API and modules, generate docs for the WebAssembly target:
+
+```sh
+cargo doc --target wasm32-unknown-unknown --no-deps --document-private-items
+```
+
+Open the generated docs at:
+
+- Native docs: `target/doc/zegois_music/index.html`
+- WASM docs: `target/wasm32-unknown-unknown/doc/zegois_music/index.html`
+
 ## Code structure
 
 - `src/lib.rs` exposes the public WASM/native entry points and wires modules together.

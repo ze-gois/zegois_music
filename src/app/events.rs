@@ -1,3 +1,10 @@
+//! DOM event binding and animation callbacks.
+//!
+//! Functions in this module attach browser closures to controls and canvases.
+//! Hit-testing borrows [`AppState`] only long enough to read the visualizer, then
+//! drops that borrow before mutating state; this avoids runtime `RefCell` panics
+//! in WASM click handlers.
+
 use std::{cell::RefCell, rc::Rc};
 
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
@@ -8,6 +15,7 @@ use super::{
     state::{AppState, EditMode},
 };
 
+/// Create the shared `requestAnimationFrame` closure used during playback.
 pub(super) fn create_animation_loop(
     window: &Window,
     state: Rc<RefCell<AppState>>,

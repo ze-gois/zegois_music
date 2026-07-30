@@ -1,6 +1,13 @@
+//! Waveform canvas visualizer.
+//!
+//! The waveform visualizer is the one visualization exported directly to
+//! JavaScript for the original MVP API. The Rust-owned app also uses it to draw
+//! synthesized samples and a playback playhead.
+
 use wasm_bindgen::{JsCast, JsValue, prelude::*};
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, window};
 
+/// Draws PCM samples and playback progress onto a canvas.
 #[wasm_bindgen]
 pub struct WaveformVisualizer {
     canvas: HtmlCanvasElement,
@@ -9,6 +16,7 @@ pub struct WaveformVisualizer {
 
 #[wasm_bindgen]
 impl WaveformVisualizer {
+    /// Create a visualizer bound to the canvas with `canvas_id`.
     #[wasm_bindgen(constructor)]
     pub fn new(canvas_id: &str) -> Result<WaveformVisualizer, JsValue> {
         let document = window()
@@ -29,6 +37,7 @@ impl WaveformVisualizer {
         Ok(WaveformVisualizer { canvas, ctx })
     }
 
+    /// Draw the idle state shown before audio has been rendered.
     pub fn draw_idle(&self) -> Result<(), JsValue> {
         let width = self.width();
         let height = self.height();
@@ -48,6 +57,7 @@ impl WaveformVisualizer {
         Ok(())
     }
 
+    /// Draw `samples` with `progress` in the range `0.0..=1.0`.
     pub fn draw_waveform(&self, samples: &[f32], progress: f32) -> Result<(), JsValue> {
         if samples.is_empty() {
             return self.draw_idle();

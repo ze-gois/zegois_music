@@ -1,6 +1,13 @@
+//! Shared canvas and note helpers for visualizers.
+//!
+//! Visualizers all use semitone offsets from A4. These helpers convert those
+//! offsets into pitch classes, display names, note ranges, and active playback
+//! indices.
+
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, window};
 
+/// Find a canvas by id and return it with a 2D rendering context.
 pub(crate) fn canvas_context(
     canvas_id: &str,
     label: &str,
@@ -23,6 +30,7 @@ pub(crate) fn canvas_context(
     Ok((canvas, ctx))
 }
 
+/// Convert normalized playback progress into a melody index.
 pub(crate) fn active_note_index(note_count: usize, progress: f32) -> usize {
     if note_count == 0 {
         0
@@ -31,6 +39,7 @@ pub(crate) fn active_note_index(note_count: usize, progress: f32) -> usize {
     }
 }
 
+/// Return a non-empty pitch range suitable for graph scaling.
 pub(crate) fn note_range(melody: &[i32]) -> (i32, i32) {
     let min_note = melody.iter().copied().min().unwrap_or(-12);
     let max_note = melody.iter().copied().max().unwrap_or(12);
@@ -42,10 +51,12 @@ pub(crate) fn note_range(melody: &[i32]) -> (i32, i32) {
     }
 }
 
+/// Convert a semitone offset from A4 into a MIDI-style pitch class.
 pub(crate) fn pitch_class_from_semitone(semitone_from_a4: i32) -> i32 {
     (69 + semitone_from_a4).rem_euclid(12)
 }
 
+/// Whether the note would be drawn as a black piano key.
 pub(crate) fn is_black_key(semitone_from_a4: i32) -> bool {
     matches!(
         pitch_class_from_semitone(semitone_from_a4),
@@ -53,6 +64,7 @@ pub(crate) fn is_black_key(semitone_from_a4: i32) -> bool {
     )
 }
 
+/// Human-readable pitch-class name using sharps.
 pub(crate) fn pitch_class_name(pitch_class: i32) -> &'static str {
     const NAMES: [&str; 12] = [
         "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B",
@@ -61,6 +73,7 @@ pub(crate) fn pitch_class_name(pitch_class: i32) -> &'static str {
     NAMES[pitch_class.rem_euclid(12) as usize]
 }
 
+/// Human-readable note name with octave, e.g. `A4` or `C#5`.
 pub(crate) fn note_name(semitone_from_a4: i32) -> String {
     let midi_note = 69 + semitone_from_a4;
     let name = pitch_class_name(midi_note.rem_euclid(12));

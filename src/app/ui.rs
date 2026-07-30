@@ -1,3 +1,10 @@
+//! Rust-owned HTML template for the browser app.
+//!
+//! Keeping the markup in Rust makes `start_app` the single entry point for UI
+//! construction and event binding. The static page only needs an `#app` mount
+//! node and the WASM loader.
+
+/// Markup injected into the page root by `start_app`.
 pub(super) const APP_HTML: &str = r#"
 <main>
   <section class="hero">

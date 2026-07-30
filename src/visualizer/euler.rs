@@ -1,3 +1,10 @@
+//! Euler/Tonnetz-inspired pitch-class graph.
+//!
+//! Nodes are arranged by the circle of fifths and linked by fifth/third
+//! relationships. During playback the active pitch class is highlighted, and
+//! during editing click hit-tests return a pitch class for the app to convert
+//! into a concrete nearby note.
+
 use wasm_bindgen::JsValue;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
@@ -18,17 +25,20 @@ const CIRCLE_OF_FIFTHS: [(i32, &str); 12] = [
     (5, "F"),
 ];
 
+/// Draws and hit-tests the circular pitch-class relationship graph.
 pub struct EulerGraphVisualizer {
     canvas: HtmlCanvasElement,
     ctx: CanvasRenderingContext2d,
 }
 
 impl EulerGraphVisualizer {
+    /// Create a graph visualizer bound to the canvas with `canvas_id`.
     pub fn new(canvas_id: &str) -> Result<EulerGraphVisualizer, JsValue> {
         let (canvas, ctx) = canvas_context(canvas_id, "Euler/Tonnetz graph canvas")?;
         Ok(EulerGraphVisualizer { canvas, ctx })
     }
 
+    /// Draw graph relationships, melody trace, and active pitch class.
     pub fn draw(&self, melody: &[i32], progress: f32) -> Result<(), JsValue> {
         let width = self.width();
         let height = self.height();
@@ -52,10 +62,12 @@ impl EulerGraphVisualizer {
         self.canvas.width() as f64
     }
 
+    /// Clone the underlying canvas so event handlers can attach listeners.
     pub fn canvas(&self) -> HtmlCanvasElement {
         self.canvas.clone()
     }
 
+    /// Return the pitch class under a canvas-space click, if any.
     pub fn pitch_class_at(&self, x: f64, y: f64) -> Option<i32> {
         let width = self.width();
         let height = self.height();

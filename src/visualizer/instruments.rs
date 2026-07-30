@@ -1,3 +1,9 @@
+//! Clickable instrument visualizers for manual melody editing.
+//!
+//! The piano and guitar neck both draw familiar musical interfaces and convert
+//! canvas-space click positions into semitone offsets from A4. The app then
+//! auditions the note and applies the current edit mode.
+
 use wasm_bindgen::JsValue;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
@@ -15,15 +21,18 @@ pub struct PianoKeyboardVisualizer {
 }
 
 impl PianoKeyboardVisualizer {
+    /// Create a piano visualizer bound to the canvas with `canvas_id`.
     pub fn new(canvas_id: &str) -> Result<PianoKeyboardVisualizer, JsValue> {
         let (canvas, ctx) = canvas_context(canvas_id, "piano keyboard canvas")?;
         Ok(PianoKeyboardVisualizer { canvas, ctx })
     }
 
+    /// Clone the underlying canvas so event handlers can attach listeners.
     pub fn canvas(&self) -> HtmlCanvasElement {
         self.canvas.clone()
     }
 
+    /// Return the semitone offset under a canvas-space click, if any.
     pub fn note_at(&self, x: f64, y: f64) -> Option<i32> {
         let height = self.height();
         if !(0.0..=height).contains(&y) {
@@ -37,6 +46,7 @@ impl PianoKeyboardVisualizer {
         (PIANO_START..=PIANO_END).contains(&note).then_some(note)
     }
 
+    /// Draw the keyboard and highlight `selected_note` when present.
     pub fn draw(&self, selected_note: Option<i32>) -> Result<(), JsValue> {
         let width = self.width();
         let height = self.height();
@@ -112,15 +122,18 @@ pub struct GuitarNeckVisualizer {
 }
 
 impl GuitarNeckVisualizer {
+    /// Create a guitar-neck visualizer bound to the canvas with `canvas_id`.
     pub fn new(canvas_id: &str) -> Result<GuitarNeckVisualizer, JsValue> {
         let (canvas, ctx) = canvas_context(canvas_id, "guitar neck canvas")?;
         Ok(GuitarNeckVisualizer { canvas, ctx })
     }
 
+    /// Clone the underlying canvas so event handlers can attach listeners.
     pub fn canvas(&self) -> HtmlCanvasElement {
         self.canvas.clone()
     }
 
+    /// Return the semitone offset under a canvas-space click, if any.
     pub fn note_at(&self, x: f64, y: f64) -> Option<i32> {
         let width = self.width();
         let height = self.height();
@@ -146,6 +159,7 @@ impl GuitarNeckVisualizer {
         Some(GUITAR_STRINGS[string_index as usize] + fret)
     }
 
+    /// Draw the guitar neck and highlight all matching selected notes.
     pub fn draw(&self, selected_note: Option<i32>) -> Result<(), JsValue> {
         let width = self.width();
         let height = self.height();

@@ -1,3 +1,10 @@
+//! Mutable browser app state.
+//!
+//! `AppState` is the center of the interactive composer. It owns the synth,
+//! audio nodes, current melody, selected edit step, edit mode, controls, and all
+//! visualizers. Event handlers borrow it through `Rc<RefCell<_>>`, keeping DOM
+//! closures small while centralizing state transitions here.
+
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::{
     AudioBufferSourceNode, AudioContext, AudioScheduledSourceNode, Document, Element,
@@ -14,6 +21,7 @@ use crate::{
 
 use super::{dom::element_by_id, music::graph_walk_melody, music::semitone_for_pitch_class_near};
 
+/// How a clicked note changes the melody.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum EditMode {
     Replace,
@@ -31,6 +39,10 @@ impl EditMode {
     }
 }
 
+/// Runtime state for playback, composition, and visual feedback.
+///
+/// Notes are stored as semitone offsets from A4. The selected note index points
+/// to the melody instant that replace/insert operations act on.
 pub(super) struct AppState {
     pub(super) synth: Synth,
     pub(super) visualizer: WaveformVisualizer,
@@ -62,6 +74,7 @@ pub(super) struct AppState {
 }
 
 impl AppState {
+    /// Find required DOM elements and construct all visualizers.
     pub(super) fn new(document: &Document) -> Result<Self, JsValue> {
         Ok(Self {
             synth: Synth::new(),
@@ -104,6 +117,7 @@ impl AppState {
         })
     }
 
+    /// Render the current melody and start Web Audio playback.
     pub(super) fn play(&mut self) -> Result<(), JsValue> {
         self.stop_current_source();
         self.stop_preview_source();
@@ -138,6 +152,9 @@ impl AppState {
         Ok(())
     }
 
+    /// Redraw playback-driven visualizers for one animation frame.
+    ///
+    /// Returns `true` while playback should continue requesting frames.
     pub(super) fn draw_animation_frame(&mut self) -> Result<bool, JsValue> {
         if self.source.is_none() || self.samples.is_empty() {
             return Ok(false);
@@ -248,6 +265,7 @@ impl AppState {
         self.set_status(&format!("Edit mode: {}.", mode.label()));
     }
 
+    /// Audition a clicked instrument note and apply the active edit mode.
     pub(super) fn apply_manual_note(&mut self, semitone: i32) -> Result<(), JsValue> {
         self.stop_current_source();
         self.samples.clear();
@@ -297,6 +315,7 @@ impl AppState {
         self.selected_note_index = self.melody.len() - 1;
     }
 
+    /// Convert a clicked graph pitch class to a nearby concrete note and edit.
     pub(super) fn apply_pitch_class(&mut self, pitch_class: i32) -> Result<(), JsValue> {
         let reference = match self.edit_mode {
             EditMode::Replace | EditMode::Insert => self.selected_note().unwrap_or(0),
