@@ -1,0 +1,35 @@
+ name: Build
+
+ on:
+   push:
+     branches:
+       - main
+   workflow_dispatch:
+
+ permissions:
+   contents: read
+
+ jobs:
+   build:
+     runs-on: ubuntu-latest
+
+     steps:
+       - name: Checkout repository
+         uses: actions/checkout@v4
+
+       - name: Install Rust with WebAssembly target
+         uses: dtolnay/rust-toolchain@stable
+         with:
+           targets: wasm32-unknown-unknown
+
+       - name: Show tool versions
+         run: |
+           rustc --version
+           cargo --version
+           rustup target list --installed
+
+       - name: Compile Rust for WebAssembly
+         run: |
+           cargo build \
+             --target wasm32-unknown-unknown \
+             --release
