@@ -8,7 +8,7 @@
 pub(super) const APP_HTML: &str = r#"
 <main>
   <section class="hero">
-    <p class="eyebrow">Rust + WebAssembly + Web Audio</p>
+    <p class="eyebrow">𝄠𝄠𝄠 Rust + WebAssembly + Web Audio 𝄠𝄠𝄠</p>
     <h1>Music</h1>
     <p>
       A tiny synthesized melody rendered from sine waves in Rust, played in
