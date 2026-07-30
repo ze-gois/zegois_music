@@ -37,3 +37,11 @@ jobs:
       - name: Inspect generated files
         run: |
           find web -maxdepth 2 -type f -print
+
+      - name: Upload website artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: zegois-music-web
+          path: web/
+          if-no-files-found: error
+          retention-days: 7
