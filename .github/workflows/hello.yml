@@ -1,0 +1,19 @@
+name: Hello
+
+on:
+  push:
+    branches:
+      - main
+      workflow_dispatch:
+
+jobs:
+  hello:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Say hello
+        run: |
+            echo "Hello, World from github actions!"
+            uname -a
+            rustc --version || true
