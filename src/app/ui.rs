@@ -17,6 +17,29 @@ pub(super) const APP_HTML: &str = r#"
   </section>
 
   <section class="panel">
+    <div class="visual-stack">
+      <div>
+        <h2>Euler/Tonnetz graph</h2>
+        <canvas id="eulerGraph" width="960" height="360" aria-label="Circular linked graph of pitch-class relationships"></canvas>
+      </div>
+      <div>
+        <h2>Manual note editor · piano</h2>
+        <canvas id="pianoKeyboard" width="960" height="180" aria-label="Clickable piano keyboard note editor"></canvas>
+      </div>
+      <div>
+        <h2>Manual note editor · guitar neck</h2>
+        <canvas id="guitarNeck" width="960" height="260" aria-label="Clickable guitar neck note editor"></canvas>
+      </div>
+      <div>
+        <h2>Note graph</h2>
+        <canvas id="noteGraph" width="960" height="260" aria-label="Pitch over time note graph"></canvas>
+      </div>
+      <div>
+        <h2>Waveform</h2>
+        <canvas id="visualizer" width="960" height="320" aria-label="Waveform visualizer"></canvas>
+      </div>
+    </div>
+    <p id="status" class="status">Ready. Press Play melody to synthesize sound from Rust.</p>
     <div class="controls">
       <button id="play">Play melody</button>
       <button id="stop" disabled>Stop!</button>
@@ -37,11 +60,11 @@ pub(super) const APP_HTML: &str = r#"
     <fieldset class="edit-mode">
       <legend>Edit melody mode</legend>
       <label>
-        <input id="replaceMode" type="radio" name="editMode" value="replace" checked />
+        <input id="replaceMode" type="radio" name="editMode" value="replace" />
         Replace selected step
       </label>
       <label>
-        <input id="insertMode" type="radio" name="editMode" value="insert" />
+        <input id="insertMode" type="radio" name="editMode" value="insert" checked/>
         Insert after selected step
       </label>
       <label>
@@ -52,29 +75,6 @@ pub(super) const APP_HTML: &str = r#"
     <p id="melodyStatus" class="melody-status">32 notes · click instruments or graph nodes to edit.</p>
     <p id="selectedNoteStatus" class="melody-status">Editing step 1.</p>
 
-    <div class="visual-stack">
-      <div>
-        <h2>Waveform</h2>
-        <canvas id="visualizer" width="960" height="320" aria-label="Waveform visualizer"></canvas>
-      </div>
-      <div>
-        <h2>Note graph</h2>
-        <canvas id="noteGraph" width="960" height="260" aria-label="Pitch over time note graph"></canvas>
-      </div>
-      <div>
-        <h2>Euler/Tonnetz graph</h2>
-        <canvas id="eulerGraph" width="960" height="360" aria-label="Circular linked graph of pitch-class relationships"></canvas>
-      </div>
-      <div>
-        <h2>Manual note editor · piano</h2>
-        <canvas id="pianoKeyboard" width="960" height="180" aria-label="Clickable piano keyboard note editor"></canvas>
-      </div>
-      <div>
-        <h2>Manual note editor · guitar neck</h2>
-        <canvas id="guitarNeck" width="960" height="260" aria-label="Clickable guitar neck note editor"></canvas>
-      </div>
-    </div>
-    <p id="status" class="status">Ready. Press Play melody to synthesize sound from Rust.</p>
   </section>
 
   <section class="notes">
