@@ -4,8 +4,27 @@
 //! construction and event binding. The static page only needs an `#app` mount
 //! node and the WASM loader.
 
+pub mod button;
+pub mod custom;
+pub mod events;
+pub mod input;
+pub mod state;
+
+pub use state::AppState;
+
+pub use crate::shared::graph::WaveformVisualizer;
+
+use std::{cell::RefCell, rc::Rc};
+use wasm_bindgen::{JsValue, prelude::*};
+use web_sys::Window;
+use web_sys::window;
+
+pub use humans::audible::music;
+pub use music::synth::{DEFAULT_BPM, DEFAULT_MELODY, render_notes};
+pub use music::synth::{Synth, frequency_for_semitone, render_melody};
+
 /// Markup injected into the page root by `start_app`.
-pub(super) const APP_HTML: &str = r#"
+pub const APP_HTML: &str = r#"
 <main>
   <section class="hero">
     <p class="eyebrow">𝄠𝄠𝄠 Rust + WebAssembly + Web Audio 𝄠𝄠𝄠</p>
@@ -93,3 +112,62 @@ pub(super) const APP_HTML: &str = r#"
   </section>
 </main>
 "#;
+
+/// Mount the Rust-owned music UI into `#app` and bind browser events.
+///
+/// This is the main function called by `web/main.js` after the WASM package is
+/// loaded. It returns a JavaScript error value when required DOM APIs or
+/// elements are unavailable.
+#[wasm_bindgen]
+pub fn start_app() -> Result<(), JsValue> {
+    let window = window().ok_or_else(|| JsValue::from_str("window is not available"))?;
+    let document = window
+        .document()
+        .ok_or_else(|| JsValue::from_str("document is not available"))?;
+
+    let root = document
+        .get_element_by_id("app")
+        .ok_or_else(|| JsValue::from_str("#app root element was not found"))?;
+    root.set_inner_html(APP_HTML);
+
+    let state = Rc::new(RefCell::new(AppState::new(&document)?));
+    state.borrow().redraw_all_idle()?;
+
+    let animation = events::create_animation_loop(&window, Rc::clone(&state));
+    state.borrow().update_note_step_ui();
+    state.borrow().update_melody_status();
+
+    button::play::bind::click(&window, Rc::clone(&state), Rc::clone(&animation))?;
+    button::stop::bind::click(&window, Rc::clone(&state))?;
+    button::reset::bind::click(Rc::clone(&state))?;
+    button::walk::bind::click(Rc::clone(&state))?;
+    button::clear::bind::click(Rc::clone(&state))?;
+
+    input::bpm::bind::click(Rc::clone(&state))?;
+    input::note_step::bind::click(Rc::clone(&state))?;
+    input::edit_mode::bind::click(&document, Rc::clone(&state))?;
+
+    custom::euler::bind::click(&window, Rc::clone(&state))?;
+    custom::piano::bind::click(&window, Rc::clone(&state))?;
+    custom::guitar::bind::click(&window, Rc::clone(&state))?;
+
+    Ok(())
+}
+
+fn request_next_frame(
+    window: &Window,
+    state: &Rc<RefCell<AppState>>,
+    animation: &Rc<RefCell<Option<Closure<dyn FnMut()>>>>,
+) {
+    if let Some(callback) = animation.borrow().as_ref() {
+        if let Ok(frame_id) = window.request_animation_frame(callback.as_ref().unchecked_ref()) {
+            state.borrow_mut().animation_frame = Some(frame_id);
+        }
+    }
+}
+
+fn cancel_scheduled_animation(window: &Window, state: &Rc<RefCell<AppState>>) {
+    if let Some(frame_id) = state.borrow_mut().animation_frame.take() {
+        let _ = window.cancel_animation_frame(frame_id);
+    }
+}

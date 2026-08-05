@@ -7,8 +7,12 @@
 
 use wasm_bindgen::JsValue;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
+use webspace::dom::canvas::canvas_context;
 
-use super::{active_note_index, canvas_context, pitch_class_from_semitone, pitch_class_name};
+use super::active_note_index;
+use humans::audible::music::note::{pitch_class_from_semitone, pitch_class_name};
+
+// use super::{active_note_index, canvas_context, pitch_class_from_semitone, pitch_class_name};
 
 const CIRCLE_OF_FIFTHS: [(i32, &str); 12] = [
     (0, "C"),

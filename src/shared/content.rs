@@ -6,7 +6,8 @@
 use wasm_bindgen::JsValue;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
-use super::{active_note_index, canvas_context, note_name, note_range};
+use humans::audible::music::note::{active_note_index, get_name_from_semitone, note_range};
+use webspace::dom::canvas::canvas_context;
 
 /// Draws the melody as pitch over time.
 pub struct NoteGraphVisualizer {
@@ -179,7 +180,11 @@ impl NoteGraphVisualizer {
 
         for semitone in min_note..=max_note {
             let y = self.y_for_note(semitone, min_note, max_note, height) + 4.0;
-            self.ctx.fill_text(&note_name(semitone), 34.0, y)?;
+            self.ctx.fill_text(
+                &humans::audible::music::note::get_name_from_semitone(semitone),
+                34.0,
+                y,
+            )?;
         }
 
         let Some(semitone) = melody.get(active_note).copied() else {
@@ -192,11 +197,11 @@ impl NoteGraphVisualizer {
             )?;
             return Ok(());
         };
-        let frequency = crate::frequency_for_semitone(semitone);
+        let frequency = humans::audible::music::synth::frequency_for_semitone(semitone);
         self.ctx.set_text_align("left");
         self.ctx.set_fill_style_str("#ffdf6b");
         self.ctx.fill_text(
-            &format!("{} · {:.1} Hz", note_name(semitone), frequency),
+            &format!("{} · {:.1} Hz", get_name_from_semitone(semitone), frequency),
             52.0,
             height - 12.0,
         )?;

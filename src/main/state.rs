@@ -11,19 +11,24 @@ use web_sys::{
     HtmlButtonElement, HtmlInputElement,
 };
 
-use crate::{
+use crate::shared::content::NoteGraphVisualizer;
+use crate::shared::euler::EulerGraphVisualizer;
+use crate::shared::graph::WaveformVisualizer;
+use crate::shared::guitar::GuitarNeckVisualizer;
+use crate::shared::piano::PianoKeyboardVisualizer;
+
+use humans::audible::music::note::get_name_from_semitone;
+
+use humans::audible::music::synth::{
     DEFAULT_BPM, DEFAULT_MELODY, Synth, frequency_for_semitone, render_notes,
-    visualizer::{
-        EulerGraphVisualizer, GuitarNeckVisualizer, NoteGraphVisualizer, PianoKeyboardVisualizer,
-        WaveformVisualizer, note_name,
-    },
 };
 
-use super::{dom::element_by_id, music::graph_walk_melody, music::semitone_for_pitch_class_near};
+use humans::audible::music::melody::{graph_walk_melody, semitone_for_pitch_class_near};
+use webspace::dom::element_by_id;
 
 /// How a clicked note changes the melody.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(super) enum EditMode {
+pub enum EditMode {
     Replace,
     Insert,
     Append,
@@ -43,39 +48,39 @@ impl EditMode {
 ///
 /// Notes are stored as semitone offsets from A4. The selected note index points
 /// to the melody instant that replace/insert operations act on.
-pub(super) struct AppState {
-    pub(super) synth: Synth,
-    pub(super) visualizer: WaveformVisualizer,
-    pub(super) note_graph: NoteGraphVisualizer,
-    pub(super) euler_graph: EulerGraphVisualizer,
-    pub(super) piano: PianoKeyboardVisualizer,
-    pub(super) guitar: GuitarNeckVisualizer,
+pub struct AppState {
+    pub synth: Synth,
+    pub visualizer: WaveformVisualizer,
+    pub note_graph: NoteGraphVisualizer,
+    pub euler_graph: EulerGraphVisualizer,
+    pub piano: PianoKeyboardVisualizer,
+    pub guitar: GuitarNeckVisualizer,
     audio_context: Option<AudioContext>,
     source: Option<AudioBufferSourceNode>,
     preview_source: Option<AudioBufferSourceNode>,
-    pub(super) samples: Vec<f32>,
-    pub(super) melody: Vec<i32>,
+    pub samples: Vec<f32>,
+    pub melody: Vec<i32>,
     selected_note_index: usize,
     edit_mode: EditMode,
     started_at: f64,
-    pub(super) animation_frame: Option<i32>,
-    pub(super) play_button: HtmlButtonElement,
-    pub(super) stop_button: HtmlButtonElement,
-    pub(super) bpm_input: HtmlInputElement,
-    pub(super) bpm_value: Element,
+    pub animation_frame: Option<i32>,
+    pub play_button: HtmlButtonElement,
+    pub stop_button: HtmlButtonElement,
+    pub bpm_input: HtmlInputElement,
+    pub bpm_value: Element,
     melody_status: Element,
     selected_note_status: Element,
     status: Element,
-    pub(super) note_step_input: HtmlInputElement,
-    pub(super) note_step_value: Element,
-    pub(super) reset_button: HtmlButtonElement,
-    pub(super) walk_button: HtmlButtonElement,
-    pub(super) clear_button: HtmlButtonElement,
+    pub note_step_input: HtmlInputElement,
+    pub note_step_value: Element,
+    pub reset_button: HtmlButtonElement,
+    pub walk_button: HtmlButtonElement,
+    pub clear_button: HtmlButtonElement,
 }
 
 impl AppState {
     /// Find required DOM elements and construct all visualizers.
-    pub(super) fn new(document: &Document) -> Result<Self, JsValue> {
+    pub fn new(document: &Document) -> Result<Self, JsValue> {
         Ok(Self {
             synth: Synth::new(),
             visualizer: WaveformVisualizer::new("visualizer")?,
@@ -118,7 +123,7 @@ impl AppState {
     }
 
     /// Render the current melody and start Web Audio playback.
-    pub(super) fn play(&mut self) -> Result<(), JsValue> {
+    pub fn play(&mut self) -> Result<(), JsValue> {
         self.stop_current_source();
         self.stop_preview_source();
 
@@ -155,7 +160,7 @@ impl AppState {
     /// Redraw playback-driven visualizers for one animation frame.
     ///
     /// Returns `true` while playback should continue requesting frames.
-    pub(super) fn draw_animation_frame(&mut self) -> Result<bool, JsValue> {
+    pub fn draw_animation_frame(&mut self) -> Result<bool, JsValue> {
         if self.source.is_none() || self.samples.is_empty() {
             return Ok(false);
         }
@@ -188,14 +193,14 @@ impl AppState {
         }
     }
 
-    pub(super) fn stop_current_source(&mut self) {
+    pub fn stop_current_source(&mut self) {
         if let Some(source) = self.source.take() {
             stop_source(&source);
         }
         self.set_playing(false);
     }
 
-    pub(super) fn stop_preview_source(&mut self) {
+    pub fn stop_preview_source(&mut self) {
         if let Some(source) = self.preview_source.take() {
             stop_source(&source);
         }
@@ -251,7 +256,7 @@ impl AppState {
         }
     }
 
-    pub(super) fn select_note_index(&mut self, note_index: usize) -> Result<(), JsValue> {
+    pub fn select_note_index(&mut self, note_index: usize) -> Result<(), JsValue> {
         self.selected_note_index = note_index.min(self.melody.len().saturating_sub(1));
         self.update_note_step_ui();
         self.redraw_melody_graphs(self.selected_progress())?;
@@ -259,14 +264,14 @@ impl AppState {
         Ok(())
     }
 
-    pub(super) fn set_edit_mode(&mut self, mode: EditMode) {
+    pub fn set_edit_mode(&mut self, mode: EditMode) {
         self.edit_mode = mode;
         self.update_melody_status();
         self.set_status(&format!("Edit mode: {}.", mode.label()));
     }
 
     /// Audition a clicked instrument note and apply the active edit mode.
-    pub(super) fn apply_manual_note(&mut self, semitone: i32) -> Result<(), JsValue> {
+    pub fn apply_manual_note(&mut self, semitone: i32) -> Result<(), JsValue> {
         self.stop_current_source();
         self.samples.clear();
         self.audition_note(semitone)?;
@@ -282,7 +287,7 @@ impl AppState {
         self.update_melody_status();
         self.set_status(&format!(
             "Played {} and updated melody: {}.",
-            note_name(semitone),
+            get_name_from_semitone(semitone),
             self.edit_mode.label()
         ));
         Ok(())
@@ -316,7 +321,7 @@ impl AppState {
     }
 
     /// Convert a clicked graph pitch class to a nearby concrete note and edit.
-    pub(super) fn apply_pitch_class(&mut self, pitch_class: i32) -> Result<(), JsValue> {
+    pub fn apply_pitch_class(&mut self, pitch_class: i32) -> Result<(), JsValue> {
         let reference = match self.edit_mode {
             EditMode::Replace | EditMode::Insert => self.selected_note().unwrap_or(0),
             EditMode::Append => self.melody.last().copied().unwrap_or(0),
@@ -325,7 +330,7 @@ impl AppState {
         self.apply_manual_note(semitone)
     }
 
-    pub(super) fn reset_melody(&mut self) -> Result<(), JsValue> {
+    pub fn reset_melody(&mut self) -> Result<(), JsValue> {
         self.stop_current_source();
         self.stop_preview_source();
         self.samples.clear();
@@ -338,7 +343,7 @@ impl AppState {
         Ok(())
     }
 
-    pub(super) fn clear_melody(&mut self) -> Result<(), JsValue> {
+    pub fn clear_melody(&mut self) -> Result<(), JsValue> {
         self.stop_current_source();
         self.stop_preview_source();
         self.samples.clear();
@@ -354,7 +359,7 @@ impl AppState {
         Ok(())
     }
 
-    pub(super) fn generate_graph_walk(&mut self) -> Result<(), JsValue> {
+    pub fn generate_graph_walk(&mut self) -> Result<(), JsValue> {
         self.stop_current_source();
         self.stop_preview_source();
         self.samples.clear();
@@ -367,7 +372,7 @@ impl AppState {
         Ok(())
     }
 
-    pub(super) fn redraw_all_idle(&self) -> Result<(), JsValue> {
+    pub fn redraw_all_idle(&self) -> Result<(), JsValue> {
         self.visualizer.draw_idle()?;
         self.redraw_melody_graphs(0.0)
     }
@@ -380,7 +385,7 @@ impl AppState {
         Ok(())
     }
 
-    pub(super) fn update_melody_status(&self) {
+    pub fn update_melody_status(&self) {
         let message = if self.melody.is_empty() {
             "0 notes · click a graph node, piano key, or guitar fret to start composing."
                 .to_string()
@@ -390,7 +395,7 @@ impl AppState {
                 .iter()
                 .rev()
                 .take(6)
-                .map(|note| note_name(*note))
+                .map(|note| humans::audible::music::note::get_name_from_semitone(*note))
                 .collect::<Vec<_>>()
                 .into_iter()
                 .rev()
@@ -407,7 +412,7 @@ impl AppState {
         self.update_selected_note_status();
     }
 
-    pub(super) fn update_note_step_ui(&self) {
+    pub fn update_note_step_ui(&self) {
         let max = self.melody.len().max(1).to_string();
         let selected = self
             .selected_note_index
@@ -424,7 +429,7 @@ impl AppState {
             format!(
                 "Editing step {} · {} · {:.1} Hz · mode: {}",
                 self.selected_note_index + 1,
-                note_name(note),
+                humans::audible::music::note::get_name_from_semitone(note),
                 frequency_for_semitone(note),
                 self.edit_mode.label()
             )
@@ -437,7 +442,7 @@ impl AppState {
         self.selected_note_status.set_text_content(Some(&message));
     }
 
-    pub(super) fn set_status(&self, message: &str) {
+    pub fn set_status(&self, message: &str) {
         self.status.set_text_content(Some(message));
     }
 }
