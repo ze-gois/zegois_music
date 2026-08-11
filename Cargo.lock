@@ -5,6 +5,8 @@ version = 4
 [[package]]
 name = "ample"
 version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "577d0f94fb7506e5211f06e64c572860eeb53805af25f9c6785840c3d359db20"
 dependencies = [
  "cc",
 ]
@@ -64,6 +66,8 @@ dependencies = [
 [[package]]
 name = "humans"
 version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f3c8a0fa7589a94d9515ce7a2ad6db0d4bc4b6f85e6918aee26604ebd8e49d0"
 dependencies = [
  "ample",
  "cc",
@@ -203,6 +207,8 @@ dependencies = [
 [[package]]
 name = "webspace"
 version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e725e3780ec2934e6ca66b8a5851638dc6c47af0b2a75de4d6564376307b3adb"
 dependencies = [
  "ample",
  "cc",

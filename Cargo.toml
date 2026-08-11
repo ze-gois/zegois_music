@@ -9,9 +9,9 @@ path = "src/library.rs"
 
 [dependencies]
 wasm-bindgen = "0.2"
-ample = { version="0.2.0", path = "../ample" }
-webspace = { version="0.2.0", path = "../webspace" }
-humans = { version="0.2.0", path = "../humans" }
+ample = "0.2.0"
+webspace = "0.2.0"
+humans = "0.2.0"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 web-sys = { version = "0.3", features = [
