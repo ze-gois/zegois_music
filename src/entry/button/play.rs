@@ -1,5 +1,5 @@
 pub mod bind {
-    use crate::main::AppState;
+    use crate::entry::AppState;
     use std::{cell::RefCell, rc::Rc};
     use wasm_bindgen::{JsCast, JsValue, closure::Closure};
     use web_sys::Window;
@@ -15,11 +15,11 @@ pub mod bind {
         let animation_for_play = Rc::clone(&animation);
 
         let on_click = Closure::wrap(Box::new(move || {
-            crate::main::cancel_scheduled_animation(&window_for_play, &state_for_play);
+            crate::entry::cancel_scheduled_animation(&window_for_play, &state_for_play);
 
             let play_result = state_for_play.borrow_mut().play();
             match play_result {
-                Ok(()) => crate::main::request_next_frame(
+                Ok(()) => crate::entry::request_next_frame(
                     &window_for_play,
                     &state_for_play,
                     &animation_for_play,

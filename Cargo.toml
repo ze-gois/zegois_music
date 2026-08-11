@@ -1,6 +1,6 @@
 [package]
 name = "zegois_music"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 
 [lib]
@@ -9,9 +9,9 @@ path = "src/library.rs"
 
 [dependencies]
 wasm-bindgen = "0.2"
-ample = { version="0.1.128", path = "../ample" }
-webspace = { version="0.0.1", path = "../webspace" }
-humans = { version="0.0.1", path = "../humans" }
+ample = { version="0.2.0", path = "../ample" }
+webspace = { version="0.2.0", path = "../webspace" }
+humans = { version="0.2.0", path = "../humans" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 web-sys = { version = "0.3", features = [

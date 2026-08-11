@@ -16,10 +16,10 @@
 //! browser UI and visualizers are compiled only for `wasm32` targets.
 
 #![allow(special_module_name)]
-pub mod main;
+pub mod entry;
 pub mod shared;
 
-pub use main::start_app;
+pub use entry::start_app;
 
 // #[cfg(target_arch = "wasm32")]
 

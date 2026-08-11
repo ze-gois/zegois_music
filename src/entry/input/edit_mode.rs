@@ -1,8 +1,8 @@
 pub mod group {
 
     pub mod bind {
-        use crate::main::AppState;
-        use crate::main::state::EditMode;
+        use crate::entry::AppState;
+        use crate::entry::state::EditMode;
         use std::{cell::RefCell, rc::Rc};
         use wasm_bindgen::{JsCast, JsValue, closure::Closure};
         use web_sys::HtmlInputElement;
@@ -29,12 +29,12 @@ pub mod group {
 }
 
 pub mod bind {
-    use crate::main::AppState;
+    use crate::entry::AppState;
     use std::{cell::RefCell, rc::Rc};
     use wasm_bindgen::JsValue;
     use web_sys::Document;
 
-    use crate::main::state::EditMode;
+    use crate::entry::state::EditMode;
     pub fn click(document: &Document, state: Rc<RefCell<AppState>>) -> Result<(), JsValue> {
         super::group::bind::click(
             webspace::dom::element_by_id(document, "replaceMode")?,

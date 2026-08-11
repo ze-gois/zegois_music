@@ -1,5 +1,5 @@
 pub mod bind {
-    use crate::main::AppState;
+    use crate::entry::AppState;
     use std::{cell::RefCell, rc::Rc};
     use wasm_bindgen::{JsCast, JsValue, closure::Closure};
     use web_sys::{MouseEvent, Window};
@@ -10,7 +10,7 @@ pub mod bind {
         let window_for_click = window.clone();
 
         let on_click = Closure::wrap(Box::new(move |event: MouseEvent| {
-            crate::main::cancel_scheduled_animation(&window_for_click, &state_for_click);
+            crate::entry::cancel_scheduled_animation(&window_for_click, &state_for_click);
 
             let rect = canvas_for_listener.get_bounding_client_rect();
             let scale_x = canvas_for_listener.width() as f64 / rect.width().max(1.0);
