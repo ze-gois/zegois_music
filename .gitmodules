@@ -1,0 +1,12 @@
+[submodule "crates/ample"]
+	path = crates/ample
+	url = git@github.com:ze-gois/rust_ample
+	branch = main
+[submodule "crates/webspace"]
+	path = crates/webspace
+	url = git@github.com:ze-gois/rust_webspace
+	branch = main
+[submodule "crates/humans"]
+	path = crates/humans
+	url = git@github.com:ze-gois/rust_humans
+	branch = main
